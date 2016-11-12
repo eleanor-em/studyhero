@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Create cards{% endblock %}
+{% block body %}
+<h1>Create the cards for your subjects</h1>
+<div>
+    <form id="cards_form" method="post" action="">
+        {% csrf_token %}
+        Commencement date: <input type="date" name="commence"> <br />
+        Mid-semester break date: <input type="date" name="break"> <br />
+        <input type="submit" value="Create">
+    </form>
+</div>
+{% endblock %}

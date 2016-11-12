@@ -4,9 +4,22 @@
     <head>
         <title>Study Hero | {% block title %}Page missing{% endblock %}</title>
     </head>
-    <body>
+    <body>    
+        {% if message %}
+            <span
+                {% if message.css_class %}
+                    class="{{ message.css_class }}"
+                {% else %}
+                    style="display: table; margin: 0 auto; text-align: center; color: {{ message.colour }};"
+                {% endif %}
+            >
+                {{ message.text }}
+            </span>
+        {% endif %}
         <div>
             {% block body %}{% endblock %}
         </div>
+        <hr />
+        <a href="/studyhero/new-subject/">create subject</a> | <a href="/studyhero/create-cards/">create cards</a> | <a href="/studyhero/">home</a>
     </body>
 </html>

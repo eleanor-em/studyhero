@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}New subject{% endblock %}
+{% block body %}
+<h1>Create a new subject</h1>
+<div>
+    <form id="subject_form" method="post" action="">
+        {% csrf_token %}
+        {% for field in form.visible_fields %}
+            {{ field.errors }}
+            {{ field.help_text }}
+            {{ field }} <br /> <br />
+        {% endfor %}
+        <br />
+        <button type="submit" name="submit">Create</button>
+    </form>
+</div>
+{% endblock %}
