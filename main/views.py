@@ -1,8 +1,9 @@
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta
 
 from django.shortcuts import render, HttpResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.core import serializers
 
 from main.forms import SubjectForm
 from main.models import Subject, Card
@@ -146,8 +147,12 @@ def rest_clear_card(request):
     return HttpResponse()
     
 def rest_get_cards(request):
-    
-    return None
+    cards = get_next_cards()
+    time_distance = (cards[0].date - datetime.now().date()).days
+    data = serializers.serialize('json', cards)
+    # unfortunately Django doesn't make this as nice as it could be
+    final_data = "[{" + '"time_distance": ' + str(time_distance) + ", " + data[2:]
+    return HttpResponse(final_data)
     
 REST_CARD_ACTIONS = {
     "GET": rest_get_cards,

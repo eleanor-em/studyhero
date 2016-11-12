@@ -5,16 +5,35 @@
 
 {% block js %}
 function updateCards() {
+    var cardList = $('#cardlist');
+    $.getJSON("/studyhero/rest/card/", { }, function(data, jqXHR) {
+        cardList.empty();
+        for (var i = 0; i < data.length; ++i) {
+            cardList.append(buildCard(data[i].pk, data[i].fields, data[0].time_distance));
+        }
+        heading = "Next card";
+        if (data.length != 1) {
+            heading += "s";
+        }
+        $('#cardheader').html(heading);
+    });
+}
+
+function buildCard(pk, card, timeDistance) {
+    return "<li>" + card.title + " <br />(" + card.points + " points) <br />Due in " + timeDistance + ' days <br /><button onclick="clearCard(' + pk + ');">Done</button></li>';
 }
 
 function clearCard(id) {
     $.ajax({
-        type: "DELETE",
-        url: "/studyhero/rest/card/",
-        data: '{ "id": "' + id + '" }',
-        ContentType: "application/json",
+        type:           "DELETE",
+        url:            "/studyhero/rest/card/",
+        data:           '{ "id": "' + id + '" }',
+        ContentType:    "application/json",
     });
+    updateCards();
 }
+
+window.onload = updateCards;
 {% endblock %}
 
 {% block js_include %}
@@ -30,18 +49,12 @@ function clearCard(id) {
     {% endfor %}
     </ul>
 {% endif %}
-{% if cards %}
-    <hr />
-    <h3>Next card{% if cards|length != 1 %}s{% endif %}</h3>
-    <ul>
-    {% for card in cards %}
-        <li>
-            {{ card.title }} <br />
-            ({{ card.points }} points) <br />
-            Due in {{ time_distance }} days <br />
-            <button onclick="clearCard({{ card.pk }})">Done</button>
-        </li>
-    {% endfor %}
-    </ul>
-{% endif %}
+<hr />
+<h3 id="cardheader"></h3>
+<ul>
+</ul>
+<hr />
+<ul id="cardlist">
+</ul>
+<button onclick="updateCards()">Refresh</button>
 {% endblock %}
