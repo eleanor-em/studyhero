@@ -1,9 +1,14 @@
-from datetime import datetime
+#from datetime import datetime
 
 from django.shortcuts import render
+from datetime import datetime, timedelta
 
 from main.forms import SubjectForm
 from main.models import Subject, Card
+
+ONE_DAY_POINTS = 10
+ONE_WEEK_POINTS = 5
+ONE_MONTH_POINTS = 2
 
 class PageMessage:
     def __init__(self, text, colour=None, css_class=None):
@@ -17,27 +22,55 @@ class PageMessage:
 def render_error(request, template, error_text):
     return render(request, template, { "message": PageMessage(text=error_text) })
     
-def render_success(request, template, success_text):
-    return render(request, template, { "message": PageMessage(text=success_text, colour="green") })
+def render_success(request, template, success_text, extras=None):
+    dict = { "message": PageMessage(text=success_text, colour="green") }
+    if extras is not None:
+        dict.update(extras)
+    return render(request, template, dict)
     
 def add_card(title, subject, points, date):
-    return Card.objects.get_or_create(title=title, subject=subject, points=points, date=date)
+    return Card.objects.get_or_create(title=title,
+                                      subject=Subject.objects.get(name=subject),
+                                      points=points,
+                                      date=date)
 
-def create_cards(commence, midsem_break):
-    for subject in Subject.objects:
-        lectures_per_week = subject.days.length
-        print lectures_per_week
-    return None
+def create_all_cards(commence, midsem_break):
+    for subject in Subject.objects.all():
+        week_date = commence
+        lecture_number = 1
+        skipped_break = False
+        
+        # 12 weeks of semester
+        for i in range(0, 12):
+            # Time delays for each round of cards
+            time_delays_points = (
+                (timedelta(days=1), ONE_DAY_POINTS),
+                (timedelta(weeks=1), ONE_WEEK_POINTS),
+                (timedelta(weeks=4), ONE_MONTH_POINTS)
+            )
+            # Create the actual card
+            for lecture_day in subject.days:
+                for delay_points in time_delays_points:
+                    add_card(subject.name + " Lecture " + str(lecture_number), subject.name, delay_points[1],
+                             week_date + delay_points[0]
+                             + timedelta(days=int(lecture_day)))
+                lecture_number += 1
+                
+            week_date += timedelta(weeks=1)
+            
+            if week_date >= midsem_break and skipped_break == False:
+                week_date += timedelta(weeks=1)
+                skipped_break = True
 
 def index(request):
-    return render(request, "index.html", { })
+    return render(request, "index.html", { "subjects": Subject.objects.all() })
     
 def new_subject(request):
     if request.method == "POST":
         form = SubjectForm(request.POST)
         if form.is_valid():
             form.save(commit=True)
-            return render_success(request, "index.html", "Successfully created subject!")
+            return render_success(request, "index.html", "Successfully created subject!", { "subjects": Subject.objects.all() })
         else:
             print form.errors
     else:
@@ -59,9 +92,19 @@ def create_cards(request):
             return render_error(request, "create-cards.html", "Break date must be after commencement date!")
         
         # Perform database manipulation
-        error = create_cards(commence, midsem_break)
-        if error is None:
-            return render_success(request, "index.html", "Successfully created cards!");
-        return render_error(request, "create-cards.html", error)
+        error = create_all_cards(commence, midsem_break)
+        return render_success(request, "index.html", "Successfully created cards!", { "subjects": Subject.objects.all() });
         
     return render(request, "create-cards.html")
+    
+def delete_subject(request):
+    subject = request.GET["name"] or None
+    if not subject is None:
+        if request.method == "POST":
+            delete = request.POST["confirm"] or None
+            if not delete is None and delete == "yes":
+                print Card.objects.filter(subject=Subject.objects.get(name=subject).pk).delete()
+                Subject.objects.get(name=subject).delete()
+        else:                
+            return render(request, "delete-subject.html", { "subject": subject })
+    return index(request)

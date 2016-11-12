@@ -2,4 +2,12 @@
 
 {% block title %}Index{% endblock %}
 {% block body %}<h1>Study Hero index</h1>
+{% if subjects %}
+    <h3>Current subjects</h3>
+    <ul>
+    {% for subject in subjects %}
+        <li>{{ subject }} (<a href="/studyhero/delete-subject/?name={{ subject }}">x</a>)</li>
+    {% endfor %}
+    </ul>
+{% endif %}
 {% endblock %}
