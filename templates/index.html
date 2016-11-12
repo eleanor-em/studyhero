@@ -1,9 +1,29 @@
 {% extends 'base.html' %}
+{% include static %}
 
 {% block title %}Index{% endblock %}
+
+{% block js %}
+function updateCards() {
+}
+
+function clearCard(id) {
+    $.ajax({
+        type: "DELETE",
+        url: "/studyhero/rest/card/",
+        data: '{ "id": "' + id + '" }',
+        ContentType: "application/json",
+    });
+}
+{% endblock %}
+
+{% block js_include %}
+<script src="/static/js/jquery-3.1.1.min.js"></script>
+{% endblock %}
+
 {% block body %}<h1>Study Hero index</h1>
 {% if subjects %}
-    <h3>Current subjects</h3>
+    <h3 id="test">Current subjects</h3>
     <ul>
     {% for subject in subjects %}
         <li>{{ subject }} (<a href="/studyhero/delete-subject/?name={{ subject }}">x</a>)</li>
@@ -19,7 +39,7 @@
             {{ card.title }} <br />
             ({{ card.points }} points) <br />
             Due in {{ time_distance }} days <br />
-            <button onclick="card_done({{ card.pk }})">Done</button>
+            <button onclick="clearCard({{ card.pk }})">Done</button>
         </li>
     {% endfor %}
     </ul>

@@ -1,7 +1,8 @@
-#from datetime import datetime
-
-from django.shortcuts import render
 from datetime import datetime, timedelta
+import json
+
+from django.shortcuts import render, HttpResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from main.forms import SubjectForm
 from main.models import Subject, Card
@@ -65,13 +66,7 @@ def create_all_cards(commence, midsem_break):
                 week_date += timedelta(weeks=1)
                 skipped_break = True
 
-def index(request, message=None):
-    # Get a message if there is one
-    dict = { "subjects": Subject.objects.all() }
-    if message is not None:
-        dict.update({ "message": message })
-    
-    # Get upcoming cards
+def get_next_cards():
     cards = Card.objects.all().order_by("date")
     if cards:
         next_cards = list()
@@ -80,9 +75,19 @@ def index(request, message=None):
             if card.date != first_date:
                 break;
             next_cards.append(card)
-        dict.update({ "cards": next_cards,
-                      "time_distance": (first_date - datetime.now().date()).days })
-        
+    return next_cards
+    
+                
+@ensure_csrf_cookie
+def index(request, message=None):
+    # Get a message if there is one
+    dict = { "subjects": Subject.objects.all() }
+    if message is not None:
+        dict.update({ "message": message })
+    
+    next_cards = get_next_cards()
+    dict.update({ "cards": next_cards,
+                  "time_distance": (next_cards[0].date - datetime.now().date()).days })
     return render(request, "index.html", dict)
     
 def new_subject(request):
@@ -119,7 +124,7 @@ def create_cards(request):
     return render(request, "create-cards.html")
     
 def delete_subject(request):
-    subject = request.GET["name"] or None
+    subject = request.GET.get("name") or None
     if not subject is None:
         if request.method == "POST":
             delete = request.POST["confirm"] or None
@@ -129,3 +134,25 @@ def delete_subject(request):
         else:                
             return render(request, "delete-subject.html", { "subject": subject })
     return index(request)
+
+def rest_clear_card(request):
+    data = json.loads(request.body)
+    if not data is None:
+        id = data.get("id")
+        card = Card.objects.get(pk=id) or None
+        if not card is None:
+            card.delete()
+
+    return HttpResponse()
+    
+def rest_get_cards(request):
+    
+    return None
+    
+REST_CARD_ACTIONS = {
+    "GET": rest_get_cards,
+    "DELETE": rest_clear_card,
+}
+
+def rest_card(request):
+    return REST_CARD_ACTIONS.get(request.method)(request)
