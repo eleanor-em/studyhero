@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timedelta
 
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseBadRequest
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.core import serializers
 
@@ -137,17 +138,24 @@ def delete_subject(request):
     return index(request)
 
 def rest_clear_card(request):
-    data = json.loads(request.body)
-    if not data is None:
+    data = json.loads(request.body) or None
+    if data is None:
+        return HttpResponseBadRequest()
+    try:
         id = data.get("id")
         card = Card.objects.get(pk=id) or None
-        if not card is None:
-            card.delete()
-
+        card.delete()
+    except:
+        return HttpResponseNotFound()
+        
     return HttpResponse()
     
 def rest_get_cards(request):
-    cards = get_next_cards()
+    try:
+        cards = get_next_cards()
+    except DoesNotExist:
+        return HttpResponseNotFound()
+        
     time_distance = (cards[0].date - datetime.now().date()).days
     data = serializers.serialize('json', cards)
     # unfortunately Django doesn't make this as nice as it could be
