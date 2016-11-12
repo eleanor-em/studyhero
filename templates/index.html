@@ -10,4 +10,18 @@
     {% endfor %}
     </ul>
 {% endif %}
+{% if cards %}
+    <hr />
+    <h3>Next card{% if cards|length != 1 %}s{% endif %}</h3>
+    <ul>
+    {% for card in cards %}
+        <li>
+            {{ card.title }} <br />
+            ({{ card.points }} points) <br />
+            Due in {{ time_distance }} days <br />
+            <button onclick="card_done({{ card.pk }})">Done</button>
+        </li>
+    {% endfor %}
+    </ul>
+{% endif %}
 {% endblock %}

@@ -69,4 +69,4 @@ class Card(models.Model):
     date = models.DateField()
     
     def __unicode__(self):
-        return self.title
+        return self.title + " " + str(self.date)

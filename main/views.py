@@ -34,6 +34,9 @@ def add_card(title, subject, points, date):
                                       points=points,
                                       date=date)
 
+def delete_all_cards():
+    Card.objects.all().delete()
+                                      
 def create_all_cards(commence, midsem_break):
     for subject in Subject.objects.all():
         week_date = commence
@@ -62,15 +65,32 @@ def create_all_cards(commence, midsem_break):
                 week_date += timedelta(weeks=1)
                 skipped_break = True
 
-def index(request):
-    return render(request, "index.html", { "subjects": Subject.objects.all() })
+def index(request, message=None):
+    # Get a message if there is one
+    dict = { "subjects": Subject.objects.all() }
+    if message is not None:
+        dict.update({ "message": message })
+    
+    # Get upcoming cards
+    cards = Card.objects.all().order_by("date")
+    if cards:
+        next_cards = list()
+        first_date = cards[0].date
+        for card in cards:
+            if card.date != first_date:
+                break;
+            next_cards.append(card)
+        dict.update({ "cards": next_cards,
+                      "time_distance": (first_date - datetime.now().date()).days })
+        
+    return render(request, "index.html", dict)
     
 def new_subject(request):
     if request.method == "POST":
         form = SubjectForm(request.POST)
         if form.is_valid():
             form.save(commit=True)
-            return render_success(request, "index.html", "Successfully created subject!", { "subjects": Subject.objects.all() })
+            return index(request, PageMessage(text="Successfully created subject!", colour="green"))
         else:
             print form.errors
     else:
@@ -92,8 +112,9 @@ def create_cards(request):
             return render_error(request, "create-cards.html", "Break date must be after commencement date!")
         
         # Perform database manipulation
-        error = create_all_cards(commence, midsem_break)
-        return render_success(request, "index.html", "Successfully created cards!", { "subjects": Subject.objects.all() });
+        delete_all_cards()
+        create_all_cards(commence, midsem_break)
+        return index(request, PageMessage(text="Successfully created cards!", colour="green"))
         
     return render(request, "create-cards.html")
     
