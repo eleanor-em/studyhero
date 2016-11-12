@@ -6,7 +6,7 @@
 {% block js %}
 function updateCards() {
     var cardList = $('#cardlist');
-    $.getJSON("/studyhero/rest/card/", { }, function(data, jqXHR) {
+    $.getJSON("/studyhero/rest/cards/", { }, function(data, jqXHR) {
         cardList.empty();
         for (var i = 0; i < data.length; ++i) {
             cardList.append(buildCard(data[i].pk, data[i].fields, data[0].time_distance));
@@ -26,7 +26,7 @@ function buildCard(pk, card, timeDistance) {
 function clearCard(id) {
     $.ajax({
         type:           "DELETE",
-        url:            "/studyhero/rest/card/",
+        url:            "/studyhero/rest/cards/",
         data:           '{ "id": "' + id + '" }',
         ContentType:    "application/json",
     });
