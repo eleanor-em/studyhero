@@ -151,6 +151,8 @@ def rest_get_cards(request):
     time_distance = (cards[0].date - datetime.now().date()).days
     data = serializers.serialize('json', cards)
     # unfortunately Django doesn't make this as nice as it could be
+    # here I just encode the time left to do the card in the JSON string
+    # before returning it
     final_data = "[{" + '"time_distance": ' + str(time_distance) + ", " + data[2:]
     return HttpResponse(final_data)
     
