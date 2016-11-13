@@ -13,6 +13,8 @@ ONE_DAY_POINTS = 10
 ONE_WEEK_POINTS = 5
 ONE_MONTH_POINTS = 2
 
+# Helper methods and classes
+
 class PageMessage:
     def __init__(self, text, colour=None, css_class=None):
         if colour is None:
@@ -79,7 +81,9 @@ def get_next_cards():
             next_cards.append(card)
     return next_cards
     
-                
+
+# Views
+    
 @ensure_csrf_cookie
 def index(request, message=None):
     # Get a message if there is one
@@ -137,6 +141,8 @@ def delete_subject(request):
             return render(request, "delete-subject.html", { "subject": subject })
     return index(request)
 
+# RESTful API views
+    
 def rest_clear_card(request):
     data = json.loads(request.body) or None
     if data is None:
