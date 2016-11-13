@@ -11,7 +11,7 @@ function updateCards() {
         for (var i = 0; i < data.length; ++i) {
             cardList.append(buildCard(data[i].pk, data[i].fields, data[0].time_distance));
         }
-        heading = "Next card";
+        var heading = "Next card";
         if (data.length != 1) {
             heading += "s";
         }
