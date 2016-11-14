@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth.models import User
+
 from main.models import Subject
 
 class SubjectForm(forms.ModelForm):
@@ -9,3 +11,11 @@ class SubjectForm(forms.ModelForm):
     class Meta:
         model = Subject
         fields = ('name', 'colour', 'days')
+        
+# Form to set up Django user object
+class UserForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput())
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password')

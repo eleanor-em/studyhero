@@ -4,36 +4,62 @@
 {% block title %}Index{% endblock %}
 
 {% block js %}
-function updateCards() {
-    var cardList = $('#cardlist');
-    $.getJSON("/studyhero/rest/cards/", { }, function(data, jqXHR) {
-        cardList.empty();
-        for (var i = 0; i < data.length; ++i) {
-            cardList.append(buildCard(data[i].pk, data[i].fields, data[0].time_distance));
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; ++i) {
+                var cookie = jQuery.trim(cookies[i]);
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
         }
-        var heading = "Next card";
-        if (data.length != 1) {
-            heading += "s";
+        return cookieValue;
+    }
+    var csrftoken = getCookie("csrftoken");
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
         }
-        $('#cardheader').html(heading);
     });
-}
+    function updateCards() {
+        var cardList = $('#cardlist');
+        $.getJSON("/studyhero/rest/cards/", { }, function(data, jqXHR) {
+            cardList.empty();
+            for (var i = 0; i < data.length; ++i) {
+                cardList.append(buildCard(data[i].pk, data[i].fields, data[0].time_distance));
+            }
+            var heading = "Next card";
+            if (data.length != 1) {
+                heading += "s";
+            }
+            $('#cardheader').html(heading);
+        });
+    }
 
-function buildCard(pk, card, timeDistance) {
-    return "<li>" + card.title + " <br />(" + card.points + " points) <br />Due in " + timeDistance + ' days <br /><button onclick="clearCard(' + pk + ');">Done</button></li>';
-}
+    function buildCard(pk, card, timeDistance) {
+        return "<li>" + card.title + " <br />(" + card.points + " points) <br />Due in " + timeDistance + ' days <br /><button onclick="clearCard(' + pk + ');">Done</button></li>';
+    }
 
-function clearCard(id) {
-    $.ajax({
-        type:           "DELETE",
-        url:            "/studyhero/rest/cards/",
-        data:           '{ "id": "' + id + '" }',
-        ContentType:    "application/json",
-    });
-    updateCards();
-}
+    function clearCard(id) {
+        $.ajax({
+            type:           "DELETE",
+            url:            "/studyhero/rest/cards/",
+            data:           '{ "id": "' + id + '" }',
+            ContentType:    "application/json",
+        });
+        updateCards();
+    }
 
-window.onload = updateCards;
+    window.onload = updateCards;
 {% endblock %}
 
 {% block js_include %}

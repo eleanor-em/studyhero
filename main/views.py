@@ -2,11 +2,14 @@ import json
 from datetime import datetime, timedelta
 
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseNotFound, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseBadRequest, HttpResponseRedirect
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.core import serializers
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ObjectDoesNotExist
 
-from main.forms import SubjectForm
+from main.forms import SubjectForm, UserForm
 from main.models import Subject, Card
 
 ONE_DAY_POINTS = 10
@@ -33,17 +36,18 @@ def render_success(request, template, success_text, extras=None):
         dict.update(extras)
     return render(request, template, dict)
     
-def add_card(title, subject, points, date):
+def add_card(user, title, subject, points, date):
     return Card.objects.get_or_create(title=title,
                                       subject=Subject.objects.get(name=subject),
                                       points=points,
-                                      date=date)
+                                      date=date,
+                                      user=user)
 
-def delete_all_cards():
-    Card.objects.all().delete()
+def delete_all_cards(user):
+    Card.objects.filter(user=user).delete()
                                       
-def create_all_cards(commence, midsem_break):
-    for subject in Subject.objects.all():
+def create_all_cards(user, commence, midsem_break):
+    for subject in Subject.objects.all().filter(user=user):
         week_date = commence
         lecture_number = 1
         skipped_break = False
@@ -59,9 +63,11 @@ def create_all_cards(commence, midsem_break):
             # Create the actual card
             for lecture_day in subject.days:
                 for delay_points in time_delays_points:
-                    add_card(subject.name + " Lecture " + str(lecture_number), subject.name, delay_points[1],
-                             week_date + delay_points[0]
-                             + timedelta(days=int(lecture_day)))
+                    add_card(user,
+                             subject.name + " Lecture " + str(lecture_number),
+                             subject.name,
+                             delay_points[1],
+                             week_date + delay_points[0] + timedelta(days=int(lecture_day)))
                 lecture_number += 1
                 
             week_date += timedelta(weeks=1)
@@ -70,8 +76,8 @@ def create_all_cards(commence, midsem_break):
                 week_date += timedelta(weeks=1)
                 skipped_break = True
 
-def get_next_cards():
-    cards = Card.objects.all().order_by("date")
+def get_next_cards(user):
+    cards = Card.objects.all().filter(user=user).order_by("date")
     if cards:
         next_cards = list()
         first_date = cards[0].date
@@ -80,34 +86,37 @@ def get_next_cards():
                 break;
             next_cards.append(card)
     return next_cards
-    
 
 # Views
     
 @ensure_csrf_cookie
 def index(request, message=None):
     # Get a message if there is one
-    dict = { "subjects": Subject.objects.all() }
+    dict = { }
+    if request.user.is_authenticated():
+        dict = { "subjects": Subject.objects.all().filter(user=request.user) }
     if message is not None:
         dict.update({ "message": message })
-    
-    next_cards = get_next_cards()
-    dict.update({ "cards": next_cards,
-                  "time_distance": (next_cards[0].date - datetime.now().date()).days })
+        
     return render(request, "index.html", dict)
     
+@login_required
 def new_subject(request):
     if request.method == "POST":
         form = SubjectForm(request.POST)
         if form.is_valid():
-            form.save(commit=True)
+            subject = form.save(commit=False)
+            subject.user = request.user
+            # TODO: Check uniqueness manually
+            
+            subject.save()
+            
             return index(request, PageMessage(text="Successfully created subject!", colour="green"))
-        else:
-            print form.errors
     else:
         form = SubjectForm()
     return render(request, "new-subject.html", { 'form': form })
     
+@login_required
 def create_cards(request):
     if request.method == "POST":
         commence = request.POST["commence"] or None
@@ -123,12 +132,13 @@ def create_cards(request):
             return render_error(request, "create-cards.html", "Break date must be after commencement date!")
         
         # Perform database manipulation
-        delete_all_cards()
-        create_all_cards(commence, midsem_break)
+        delete_all_cards(request.user)
+        create_all_cards(request.user, commence, midsem_break)
         return index(request, PageMessage(text="Successfully created cards!", colour="green"))
         
     return render(request, "create-cards.html")
     
+@login_required
 def delete_subject(request):
     subject = request.GET.get("name") or None
     if not subject is None:
@@ -141,6 +151,53 @@ def delete_subject(request):
             return render(request, "delete-subject.html", { "subject": subject })
     return index(request)
 
+def register(request):
+    if request.user.is_authenticated():
+        return index(request)
+    if request.method == "POST":
+        user_form = UserForm(data=request.POST);
+        
+        if user_form.is_valid():
+            user = user_form.save()
+            username = user.username
+            password = user.password
+            user.set_password(password)
+            user.save()
+            
+            user = authenticate(username=username, password=password)
+            login(request, user)
+            
+            return index(request, PageMessage(text="Successfully registered!", colour="green"))
+    else:
+        user_form = UserForm()
+        
+    return render(request, "register.html", { "user_form":      user_form })
+                                              
+def user_login(request):
+    if request.user.is_authenticated():
+        return index(request)
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        
+        user = authenticate(username=username, password=password)
+        message = None
+        if user:
+            if user.is_active:
+                login(request, user)
+                message = PageMessage(text="Welcome " + username + "!", colour="green")
+            else:
+                message = PageMessage(text="Your account has been disabled.")
+        else:
+            message = PageMessage(text="Your login details were incorrect")
+        return index(request, message)
+    return render(request, "login.html")
+
+@login_required
+def user_logout(request):
+    logout(request)
+    return index(request, PageMessage(text="You have successfully logged out!", colour="green"))
+    
 # RESTful API views
     
 def rest_clear_card(request):
@@ -149,7 +206,7 @@ def rest_clear_card(request):
         return HttpResponseBadRequest()
     try:
         id = data.get("id")
-        card = Card.objects.get(pk=id) or None
+        card = Card.objects.get(pk=id, user=request.user) or None
         card.delete()
     except:
         return HttpResponseNotFound()
@@ -158,8 +215,8 @@ def rest_clear_card(request):
     
 def rest_get_cards(request):
     try:
-        cards = get_next_cards()
-    except DoesNotExist:
+        cards = get_next_cards(request.user)
+    except ObjectDoesNotExist:
         return HttpResponseNotFound()
         
     time_distance = (cards[0].date - datetime.now().date()).days
@@ -176,4 +233,6 @@ REST_CARD_ACTIONS = {
 }
 
 def rest_card(request):
+    if not request.user.is_authenticated():
+        return HttpResponseNotFound()
     return REST_CARD_ACTIONS.get(request.method)(request)
