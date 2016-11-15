@@ -107,11 +107,20 @@ def new_subject(request):
         if form.is_valid():
             subject = form.save(commit=False)
             subject.user = request.user
-            # TODO: Check uniqueness manually
-            
-            subject.save()
-            
-            return index(request, PageMessage(text="Successfully created subject!", colour="green"))
+            # Check uniqueness conditions
+            user_subjects = Subject.objects.all().filter(user=subject.user)
+            valid = True
+            print subject.colour
+            if len(user_subjects.filter(name=subject.name)) != 0:
+                valid = False;
+                form.add_error("name", "Name is already in use.")
+            if len(user_subjects.filter(colour=subject.colour)) != 0:
+                valid = False;
+                form.add_error("colour", "Colour is already in use.")
+                
+            if valid:
+                subject.save()                
+                return index(request, PageMessage(text="Successfully created subject!", colour="green"))
     else:
         form = SubjectForm()
     return render(request, "new-subject.html", { 'form': form })
