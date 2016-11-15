@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 
 from main.forms import SubjectForm, UserForm
-from main.models import Subject, Card
+from main.models import Subject, Card, StudyUser
 
 ONE_DAY_POINTS = 10
 ONE_WEEK_POINTS = 5
@@ -87,11 +87,18 @@ def get_next_cards(user):
             next_cards.append(card)
     return next_cards
 
+def check_multiplier(user, card):
+    study_user = StudyUser.objects.get(user=user)
+    now = datetime.now().date()
+    if study_user.last_updated != now:
+        study_user.last_updated = now
+        if now > card.date:
+            study_user.multiplier = 1
+        study_user.save()
 # Views
     
 @ensure_csrf_cookie
 def index(request, message=None):
-    # Get a message if there is one
     dict = { }
     if request.user.is_authenticated():
         dict = { "subjects": Subject.objects.all().filter(user=request.user) }
@@ -172,6 +179,7 @@ def register(request):
             password = user.password
             user.set_password(password)
             user.save()
+            StudyUser.objects.create(user=user)
             
             user = authenticate(username=username, password=password)
             login(request, user)
@@ -216,6 +224,10 @@ def rest_clear_card(request):
     try:
         id = data.get("id")
         card = Card.objects.get(pk=id, user=request.user) or None
+        user = StudyUser.objects.get(user=request.user)
+        user.points += card.points * user.multiplier
+        user.multiplier += 1
+        user.save()
         card.delete()
     except:
         return HttpResponseNotFound()
@@ -225,6 +237,7 @@ def rest_clear_card(request):
 def rest_get_cards(request):
     try:
         cards = get_next_cards(request.user)
+        check_multiplier(request.user, cards[0])
     except ObjectDoesNotExist:
         return HttpResponseNotFound()
         
@@ -233,7 +246,8 @@ def rest_get_cards(request):
     # unfortunately Django doesn't make this as nice as it could be
     # here I just encode the time left to do the card in the JSON string
     # before returning it
-    final_data = "[{" + '"time_distance": ' + str(time_distance) + ", " + data[2:]
+    study_user = StudyUser.objects.get(user=request.user)
+    final_data = "[{" + '"time_distance": ' + str(time_distance) + ", " + '"points": ' + str(study_user.points) + ", " + '"multiplier": ' + str(study_user.multiplier) + ", " + data[2:]
     return HttpResponse(final_data)
     
 REST_CARD_ACTIONS = {

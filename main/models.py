@@ -79,3 +79,12 @@ class Card(models.Model):
     
     def __unicode__(self):
         return self.title + " " + str(self.date)
+        
+class StudyUser(models.Model):
+    user = models.OneToOneField(User)
+    points = models.IntegerField(default=0)
+    multiplier = models.IntegerField(default=1)
+    last_updated = models.DateField()
+    
+    def __unicode__(self):
+        return self.user.username
