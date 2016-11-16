@@ -21,7 +21,7 @@ ONE_MONTH_POINTS = 2
 class PageMessage:
     def __init__(self, text, colour=None, css_class=None):
         if colour is None:
-            colour = "red"
+            colour = "Red"
         self.text = text
         self.colour = colour
         if not css_class is None:
@@ -31,7 +31,7 @@ def render_error(request, template, error_text):
     return render(request, template, { "message": PageMessage(text=error_text) })
     
 def render_success(request, template, success_text, extras=None):
-    dict = { "message": PageMessage(text=success_text, colour="green") }
+    dict = { "message": PageMessage(text=success_text, colour="Green") }
     if extras is not None:
         dict.update(extras)
     return render(request, template, dict)
@@ -41,7 +41,8 @@ def add_card(user, title, subject, points, date):
                                       subject=Subject.objects.get(name=subject),
                                       points=points,
                                       date=date,
-                                      user=user)
+                                      user=user,
+                                      colour=subject.colour)
 
 def delete_all_cards(user):
     Card.objects.filter(user=user).delete()
@@ -127,7 +128,7 @@ def new_subject(request):
                 
             if valid:
                 subject.save()                
-                return index(request, PageMessage(text="Successfully created subject!", colour="green"))
+                return index(request, PageMessage(text="Successfully created subject!", colour="Green"))
     else:
         form = SubjectForm()
     return render(request, "new-subject.html", { 'form': form })
@@ -150,7 +151,7 @@ def create_cards(request):
         # Perform database manipulation
         delete_all_cards(request.user)
         create_all_cards(request.user, commence, midsem_break)
-        return index(request, PageMessage(text="Successfully created cards!", colour="green"))
+        return index(request, PageMessage(text="Successfully created cards!", colour="Green"))
         
     return render(request, "create-cards.html")
     
@@ -165,7 +166,7 @@ def delete_subject(request):
                 Subject.objects.get(name=subject).delete()
         else:                
             return render(request, "delete-subject.html", { "subject": subject })
-    return index(request)
+    return index(request, PageMessage(text="Successfully deleted " + subject + "!", colour="Green"));
 
 def register(request):
     if request.user.is_authenticated():
@@ -184,7 +185,7 @@ def register(request):
             user = authenticate(username=username, password=password)
             login(request, user)
             
-            return index(request, PageMessage(text="Successfully registered!", colour="green"))
+            return index(request, PageMessage(text="Successfully registered!", colour="Green"))
     else:
         user_form = UserForm()
         
@@ -202,7 +203,7 @@ def user_login(request):
         if user:
             if user.is_active:
                 login(request, user)
-                message = PageMessage(text="Welcome " + username + "!", colour="green")
+                message = PageMessage(text="Welcome " + username + "!", colour="Green")
             else:
                 message = PageMessage(text="Your account has been disabled.")
         else:
@@ -213,7 +214,7 @@ def user_login(request):
 @login_required
 def user_logout(request):
     logout(request)
-    return index(request, PageMessage(text="You have successfully logged out!", colour="green"))
+    return index(request, PageMessage(text="You have successfully logged out!", colour="Green"))
     
 # RESTful API views
     
@@ -240,14 +241,19 @@ def rest_get_cards(request):
         check_multiplier(request.user, cards[0])
     except ObjectDoesNotExist:
         return HttpResponseNotFound()
-        
+                
     time_distance = (cards[0].date - datetime.now().date()).days
     data = serializers.serialize('json', cards)
     # unfortunately Django doesn't make this as nice as it could be
     # here I just encode the time left to do the card in the JSON string
     # before returning it
     study_user = StudyUser.objects.get(user=request.user)
-    final_data = "[{" + '"time_distance": ' + str(time_distance) + ", " + '"points": ' + str(study_user.points) + ", " + '"multiplier": ' + str(study_user.multiplier) + ", " + data[2:]
+    final_data = "[{"
+    final_data += '"time_distance": ' + str(time_distance) + ", "
+    final_data += '"points": ' + str(study_user.points) + ", "
+    final_data += '"multiplier": ' + str(study_user.multiplier) + ", "
+    final_data += data[2:]
+    print data
     return HttpResponse(final_data)
     
 REST_CARD_ACTIONS = {

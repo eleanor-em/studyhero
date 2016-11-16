@@ -37,27 +37,21 @@ class ListField(models.TextField):
         return self.get_db_prep_value(value)
 
 class Subject(models.Model):
-    RED = "#FFB5B9"
-    ORANGE = "#FFE6BF"
-    YELLOW = "#FFEDB5"
-    GREEN = "#B5F2BA"
-    BLUE = "#BFDAFF"
-    INDIGO = "#DABFFF"
-    VIOLET = "#FBBFFF"
+    RED = "0"
+    YELLOW = "1"
+    GREEN = "2"
+    BLUE = "3"
     
     COLOURS = (
         (RED, "Red"),
-        (ORANGE, "Orange"),
         (YELLOW, "Yellow"),
         (GREEN, "Green"),
         (BLUE, "Blue"),
-        (INDIGO, "Indigo"),
-        (VIOLET, "Violet")
     )
     DAYS = [(str(i), calendar.day_name[i]) for i in range(0, 5)]
 
     name = models.CharField(max_length=50)
-    colour = models.CharField(max_length=7, choices=COLOURS)
+    colour = models.CharField(max_length=6, choices=COLOURS)
     days = ListField()
     user = models.ForeignKey(User)
     
@@ -76,6 +70,7 @@ class Card(models.Model):
     points = models.IntegerField(default=1)
     date = models.DateField()
     user = models.ForeignKey(User)
+    colour = models.CharField(max_length=6, choices=Subject.COLOURS)
     
     def __unicode__(self):
         return self.title + " " + str(self.date)

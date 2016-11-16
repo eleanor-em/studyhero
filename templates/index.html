@@ -30,6 +30,7 @@
             }
         }
     });
+    
     function updateCards() {
         var cardList = $('#cardlist');
         $.getJSON("/studyhero/rest/cards/", { }, function(data, jqXHR) {
@@ -42,12 +43,25 @@
                 heading += "s";
             }
             $('#cardheader').html(heading);
-            $('#heading').html("Study hero index (" + data[0].points + " points, " + data[0].multiplier + "x)");
+            $('#heading').html(data[0].points + " points | " + data[0].multiplier + "x");
         });
     }
 
+    var COLOURS = {
+        "Red":      "danger",
+        "Yellow":   "warning",
+        "Green":    "success",
+        "Blue":     "info",
+    };
+    
     function buildCard(pk, card, timeDistance) {
-        return "<li>" + card.title + " <br />(" + card.points + " points) <br />Due in " + timeDistance + ' days <br /><button onclick="clearCard(' + pk + ');">Done</button></li>';
+        console.log(COLOURS["Red"]);
+        tag = '<div class="panel panel-' + COLOURS[card.colour] + '"><div class="panel-heading">' + card.title + '</div><div class="panel-body"><h4>' + card.points + ' points</h4>';
+        tag += (timeDistance > 0) ? ('Due in ' + timeDistance) : ('Overdue by ' + (-timeDistance));
+        tag +=  ' day';
+        tag += (timeDistance == 1 || timeDistance == -1)?(''):('s');
+        tag += '<br /><br /><button onclick="clearCard(' + pk + ');">Done</button></div></div>';
+        return tag;
     }
 
     function clearCard(id) {
@@ -61,10 +75,6 @@
     }
 
     window.onload = updateCards;
-{% endblock %}
-
-{% block js_include %}
-<script src="/static/js/jquery-3.1.1.min.js"></script>
 {% endblock %}
 
 {% block body %}
@@ -82,7 +92,7 @@
 <ul>
 </ul>
 <hr />
-<ul id="cardlist">
-</ul>
+<div id="cardlist">
+</div>
 <button onclick="updateCards()">Refresh</button>
 {% endblock %}
